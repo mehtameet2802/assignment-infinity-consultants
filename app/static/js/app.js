@@ -199,7 +199,6 @@ function bindGlobalActions() {
 function initApp() {
   populateSelects();
   bindGlobalActions();
-  initNavigation();
 
   const month = currentMonth();
   initDashboard(month, (nextMonth) => {
@@ -209,6 +208,7 @@ function initApp() {
   const analyticsEnd = month;
   const analyticsStart = shiftMonth(month, -5);
   initAnalytics(analyticsStart, analyticsEnd);
+  initNavigation();
 
   loadDashboard(month);
 }

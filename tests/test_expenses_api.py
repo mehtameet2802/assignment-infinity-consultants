@@ -69,6 +69,11 @@ def test_create_expense_rejects_negative_amount(client):
     _assert_validation_error(response, field="amount")
 
 
+def test_create_expense_rejects_sub_cent_amount(client):
+    response = client.post("/expenses", json=_expense_payload(amount=0.001))
+    _assert_validation_error(response, field="amount")
+
+
 def test_create_expense_rejects_invalid_category(client):
     response = client.post("/expenses", json=_expense_payload(category="Paytm"))
     _assert_validation_error(response, field="category")

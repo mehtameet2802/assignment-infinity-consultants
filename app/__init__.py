@@ -1,8 +1,10 @@
 import os
 
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
+from werkzeug.exceptions import HTTPException
 
 from app.database import Base, engine
+from app.http import error_response
 
 _STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 from app.routes.analytics import analytics_bp
@@ -37,6 +39,31 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     @app.get("/health")
     def health_check():
         return jsonify({"status": "ok"})
+
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(error: HTTPException):
+        if request.path.startswith("/static/"):
+            return error.get_response()
+        code = {
+            404: "not_found",
+            405: "method_not_allowed",
+        }.get(error.code, "http_error")
+        message = error.description or "Request failed"
+        return error_response(
+            code,
+            [{"field": None, "message": message}],
+            error.code or 500,
+        )
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_exception(error: Exception):
+        if request.path.startswith("/static/"):
+            raise error
+        return error_response(
+            "internal_error",
+            [{"field": None, "message": "An unexpected error occurred"}],
+            500,
+        )
 
     @app.teardown_appcontext
     def close_db(exception=None):

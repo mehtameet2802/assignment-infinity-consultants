@@ -1,5 +1,5 @@
 import { ApiError, apiGet } from "./api.js";
-import { formatCurrency, formatDisplayDate } from "./formatters.js";
+import { escapeHtml, formatCurrency, formatDisplayDate } from "./formatters.js";
 
 const state = {
   offset: 0,
@@ -58,9 +58,9 @@ function renderExpenses(data) {
         (item) => `
         <tr class="border-t border-outline-variant/20">
           <td class="py-3 px-4">${formatDisplayDate(item.date)}</td>
-          <td class="py-3 px-4">${item.category}</td>
-          <td class="py-3 px-4">${item.payment_method}</td>
-          <td class="py-3 px-4">${item.note || "—"}</td>
+          <td class="py-3 px-4">${escapeHtml(item.category)}</td>
+          <td class="py-3 px-4">${escapeHtml(item.payment_method)}</td>
+          <td class="py-3 px-4">${item.note ? escapeHtml(item.note) : "—"}</td>
           <td class="py-3 px-4 text-right font-headline-sm">${formatCurrency(item.amount)}</td>
         </tr>`
       )

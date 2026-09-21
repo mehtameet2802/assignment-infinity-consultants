@@ -83,7 +83,7 @@ The SQLite database file is created automatically on first run.
 pytest
 ```
 
-Current suite: **118 tests** (API, change engine, dashboard, analytics, frontend serving).
+Run `pytest` from the project root (see test count in the pytest summary after any changes).
 
 ## API Overview
 

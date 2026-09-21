@@ -58,6 +58,12 @@ def test_dashboard_invalid_month_number_rejected(client):
     assert response.get_json()["error"] == "validation_error"
 
 
+def test_dashboard_rejects_year_zero_month(client):
+    response = client.get("/dashboard", query_string={"month": "0000-01"})
+    assert response.status_code == 422
+    assert response.get_json()["error"] == "validation_error"
+
+
 def test_dashboard_total_spend_correct(client, db_session: Session):
     _add(db_session, amount="100.50", expense_date=date(2026, 9, 1))
     _add(db_session, amount="49.50", expense_date=date(2026, 9, 30))

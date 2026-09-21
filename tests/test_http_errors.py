@@ -1,40 +1,13 @@
-from pydantic import BaseModel, Field, ValidationError
-
-from app.http import error_response, validation_error_response
-
-
-class _SampleModel(BaseModel):
-    amount: int = Field(gt=0)
-
-
-def test_error_response_shape(app):
-    with app.app_context():
-        response, status_code = error_response(
-            "validation_error",
-            [{"field": "amount", "message": "Input should be greater than 0"}],
-            422,
-        )
-    assert status_code == 422
-    assert response.get_json() == {
-        "error": "validation_error",
-        "details": [
-            {"field": "amount", "message": "Input should be greater than 0"},
-        ],
-    }
-
-
-def test_validation_error_response_maps_pydantic_errors(app):
-    try:
-        _SampleModel.model_validate({"amount": 0})
-    except ValidationError as error:
-        with app.app_context():
-            response, status_code = validation_error_response(error)
-    else:
-        raise AssertionError("expected validation error")
-
-    assert status_code == 422
+def test_unknown_api_route_returns_json_not_found(client):
+    response = client.get("/does-not-exist")
+    assert response.status_code == 404
     body = response.get_json()
-    assert body["error"] == "validation_error"
-    assert body["details"] == [
-        {"field": "amount", "message": "Input should be greater than 0"},
-    ]
+    assert body["error"] == "not_found"
+    assert body["details"][0]["message"]
+
+
+def test_wrong_method_returns_json(client):
+    response = client.post("/health")
+    assert response.status_code == 405
+    body = response.get_json()
+    assert body["error"] == "method_not_allowed"

@@ -1,8 +1,9 @@
-import re
 from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
+
+from app.month_validation import validate_month_string
 
 
 class SummaryQuery(BaseModel):
@@ -12,12 +13,7 @@ class SummaryQuery(BaseModel):
     @field_validator("start_month", "end_month")
     @classmethod
     def validate_month(cls, value: str) -> str:
-        if not re.fullmatch(r"\d{4}-\d{2}", value):
-            raise ValueError("Invalid month format. Expected YYYY-MM")
-        month_number = int(value[5:7])
-        if month_number < 1 or month_number > 12:
-            raise ValueError("Invalid month format. Expected YYYY-MM")
-        return value
+        return validate_month_string(value)
 
 
 class MonthlyAmountPoint(BaseModel):

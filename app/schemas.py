@@ -14,6 +14,16 @@ class ExpenseBase(BaseModel):
     note: Optional[str] = Field(default=None, max_length=500)
     date: date
 
+    @field_validator("amount")
+    @classmethod
+    def amount_two_decimal_places(cls, value: Decimal) -> Decimal:
+        quantized = value.quantize(Decimal("0.01"))
+        if quantized <= 0:
+            raise ValueError("Amount must be greater than zero")
+        if value != quantized:
+            raise ValueError("Amount must have at most 2 decimal places")
+        return quantized
+
     @field_validator("date")
     @classmethod
     def date_not_in_future(cls, value: date) -> date:
