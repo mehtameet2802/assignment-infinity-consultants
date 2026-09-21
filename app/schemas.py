@@ -31,3 +31,19 @@ class ExpenseResponse(ExpenseBase):
 
     id: int
     created_at: datetime
+
+
+class ExpenseListResponse(BaseModel):
+    items: list[ExpenseResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class ExpenseListQuery(BaseModel):
+    category: Optional[Category] = None
+    payment_method: Optional[PaymentMethod] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    limit: int = Field(default=20, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
