@@ -80,14 +80,19 @@ def has_usable_api_key(db: Session, now: datetime | None = None) -> bool:
     return any(is_api_key_record_valid(record, moment) for record in records)
 
 
-def create_api_key_record(db: Session, raw_key: str, pepper: str) -> ApiKey:
+def create_api_key_record(
+    db: Session, raw_key: str, pepper: str, *, commit: bool = True
+) -> ApiKey:
     record = ApiKey(
         key_hash=hash_api_key(raw_key, pepper),
         key_prefix=key_prefix_for_display(raw_key),
     )
     db.add(record)
-    db.commit()
-    db.refresh(record)
+    if commit:
+        db.commit()
+        db.refresh(record)
+    else:
+        db.flush()
     return record
 
 
@@ -126,6 +131,17 @@ def api_key_metadata(record: ApiKey) -> dict[str, Any]:
     }
 
 
+def require_api_key_for_auth_routes():
+    """Guard /auth/* when authentication is off or misconfigured."""
+    from app.http import auth_disabled_response
+
+    if not _auth_enabled():
+        return auth_disabled_response()
+    if not auth_is_configured():
+        return auth_not_configured_response()
+    return require_api_key()
+
+
 def require_api_key():
     """Return None on success; sets g.api_key. Otherwise return (response, status)."""
     if not _auth_enabled():
@@ -158,9 +174,10 @@ def rotate_api_key(db: Session, current_record: ApiKey, password: str) -> tuple[
     if not pepper:
         raise RuntimeError("auth_not_configured")
     raw_new = generate_raw_api_key()
-    new_record = create_api_key_record(db, raw_new, pepper)
     grace_until = utc_now() + timedelta(minutes=ROTATION_GRACE_MINUTES)
+    new_record = create_api_key_record(db, raw_new, pepper, commit=False)
     current_record.expires_at = grace_until
     db.commit()
+    db.refresh(new_record)
     db.refresh(current_record)
     return raw_new, new_record, grace_until

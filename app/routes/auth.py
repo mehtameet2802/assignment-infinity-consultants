@@ -10,8 +10,7 @@ from app.http import (
 )
 from app.services.auth import (
     api_key_metadata,
-    auth_is_configured,
-    require_api_key,
+    require_api_key_for_auth_routes,
     rotate_api_key,
 )
 
@@ -24,7 +23,7 @@ class RotateRequest(BaseModel):
 
 @auth_bp.before_request
 def _require_api_key():
-    result = require_api_key()
+    result = require_api_key_for_auth_routes()
     if result is not None:
         return result
 
@@ -47,8 +46,6 @@ def api_key_info():
 
 @auth_bp.route("/api-key/rotate", methods=["POST"])
 def api_key_rotate():
-    if not auth_is_configured():
-        return auth_not_configured_response()
     body = request.get_json(silent=True)
     if body is None:
         return invalid_json_response()

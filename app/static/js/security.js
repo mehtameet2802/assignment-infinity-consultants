@@ -8,8 +8,10 @@ function setText(id, value) {
   if (el) el.textContent = value ?? "—";
 }
 
-export async function loadSecurityView() {
-  hideRotationResult();
+export async function loadSecurityView({ preserveRotationResult = false } = {}) {
+  if (!preserveRotationResult) {
+    hideRotationResult();
+  }
   try {
     const data = await apiGet("/auth/api-key");
     setText("security-key-prefix", data.prefix);
@@ -56,7 +58,7 @@ export function initSecurity() {
       document.getElementById("security-rotate-form").classList.add("hidden");
       document.getElementById("rotation-new-key").textContent = result.api_key;
       document.getElementById("rotation-result-panel").classList.remove("hidden");
-      await loadSecurityView();
+      await loadSecurityView({ preserveRotationResult: true });
     } catch (error) {
       const message =
         error?.body?.error === "invalid_admin_password"

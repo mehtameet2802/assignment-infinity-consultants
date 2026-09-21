@@ -241,3 +241,11 @@ def test_auth_not_configured_returns_503(db_session: Session):
 def test_auth_disabled_preserves_open_api(client: FlaskClient):
     response = client.get("/expenses")
     assert response.status_code == 200
+
+
+def test_auth_routes_return_404_when_auth_disabled(client: FlaskClient):
+    assert client.get("/auth/verify").status_code == 404
+    assert client.get("/auth/api-key").status_code == 404
+    assert client.post("/auth/api-key/rotate", json={"password": "x"}).status_code == 404
+    body = client.get("/auth/verify").get_json()
+    assert body["error"] == "auth_disabled"

@@ -38,22 +38,34 @@ export function showAppShell() {
   document.getElementById("app-shell").classList.remove("hidden");
 }
 
-export async function isAuthRequired() {
+export async function resolveAuthBootstrap() {
   const { currentMonth } = await import("./formatters.js");
   const response = await fetch(`/dashboard?month=${currentMonth()}`, {
     headers: { Accept: "application/json" },
   });
   if (response.status === 200) {
-    return false;
+    return { mode: "open" };
   }
   if (response.status === 401) {
-    return true;
+    return { mode: "locked" };
   }
   if (response.status === 503) {
     const body = await response.json().catch(() => ({}));
-    return body?.error !== "auth_not_configured";
+    if (body?.error === "auth_not_configured") {
+      return { mode: "misconfigured" };
+    }
   }
-  return true;
+  return { mode: "locked" };
+}
+
+export function showAuthMisconfiguredView() {
+  document.getElementById("view-unlock").classList.remove("hidden");
+  document.getElementById("app-shell").classList.add("hidden");
+  const errorEl = document.getElementById("unlock-error");
+  errorEl.textContent =
+    "API authentication is enabled but not configured on the server. Set API_KEY_PEPPER and ADMIN_PASSWORD_HASH, then create an initial key.";
+  errorEl.classList.remove("hidden");
+  document.getElementById("unlock-form").classList.add("hidden");
 }
 
 export async function verifyStoredKey() {

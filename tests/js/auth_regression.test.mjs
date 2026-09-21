@@ -91,3 +91,44 @@ test("security route exists in app path map", () => {
   const appSource = readFileSync(join(staticJs, "app.js"), "utf8");
   assert.match(appSource, /security:\s*"\/settings\/security"/);
 });
+
+test("loadSecurityView preserves displayed rotation key after metadata refresh", async () => {
+  const dom = new JSDOM(
+    `
+    <p id="security-error" class="hidden"></p>
+    <p id="security-key-prefix"></p>
+    <p id="security-created-at"></p>
+    <p id="security-last-used"></p>
+    <div id="rotation-result-panel" class="hidden"></div>
+    <p id="rotation-new-key"></p>
+  `,
+    { url: "http://127.0.0.1/settings/security" }
+  );
+  globalThis.document = dom.window.document;
+  globalThis.window = dom.window;
+  globalThis.sessionStorage = dom.window.sessionStorage;
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("/auth/api-key")) {
+      return {
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            prefix: "st_new123…",
+            created_at: "2026-09-21T10:00:00",
+            last_used_at: null,
+          }),
+      };
+    }
+    return { ok: false, status: 404, text: async () => "{}" };
+  };
+  const authMod = await import(pathToFileURL(join(staticJs, "auth.js")).href);
+  authMod.setApiKey("st_new_secret");
+  const { loadSecurityView } = await import(pathToFileURL(join(staticJs, "security.js")).href);
+  document.getElementById("rotation-new-key").textContent = "st_new_secret";
+  document.getElementById("rotation-result-panel").classList.remove("hidden");
+  await loadSecurityView({ preserveRotationResult: true });
+  assert.equal(document.getElementById("rotation-result-panel").classList.contains("hidden"), false);
+  assert.equal(document.getElementById("rotation-new-key").textContent, "st_new_secret");
+  globalThis.fetch = undefined;
+});

@@ -44,6 +44,14 @@ def unauthorized_response():
     )
 
 
+def auth_disabled_response():
+    return error_response(
+        "auth_disabled",
+        [{"field": None, "message": "API authentication is disabled"}],
+        404,
+    )
+
+
 def auth_not_configured_response():
     return error_response(
         "auth_not_configured",

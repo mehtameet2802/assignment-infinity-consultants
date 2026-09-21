@@ -1,7 +1,8 @@
 import { ApiError, apiPost } from "./api.js";
 import {
-  isAuthRequired,
   onUnauthorized,
+  resolveAuthBootstrap,
+  showAuthMisconfiguredView,
   showUnlockView,
   unlockWithKey,
   verifyStoredKey,
@@ -258,8 +259,12 @@ async function bootstrap() {
   onUnauthorized(onLock);
   window.addEventListener("spend-tracker-lock", onLock);
 
-  const authRequired = await isAuthRequired();
-  if (!authRequired) {
+  const authState = await resolveAuthBootstrap();
+  if (authState.mode === "misconfigured") {
+    showAuthMisconfiguredView();
+    return;
+  }
+  if (authState.mode === "open") {
     document.getElementById("view-unlock").classList.add("hidden");
     document.getElementById("app-shell").classList.remove("hidden");
     startAppViews();
