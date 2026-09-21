@@ -35,6 +35,21 @@
   </script>
 </head>
 <body class="bg-surface text-on-surface font-sans">
+  <section id="view-unlock" class="hidden min-h-screen flex items-center justify-center px-4">
+    <div class="bg-surface-container-lowest rounded-xl shadow-lg p-8 w-full max-w-md border border-outline-variant/30">
+      <h1 class="text-2xl font-bold">Unlock Spend Tracker</h1>
+      <p class="text-on-surface-variant mt-2 text-sm">Enter your API key to access expenses and analytics.</p>
+      <form id="unlock-form" class="mt-6 space-y-4">
+        <label class="block text-sm font-medium">API Key
+          <input id="unlock-api-key" type="password" autocomplete="off" class="mt-1 w-full rounded-lg border border-outline-variant/50 p-2" required>
+        </label>
+        <p id="unlock-error" class="hidden text-error text-sm"></p>
+        <button id="unlock-submit" type="submit" class="w-full py-2 rounded-lg bg-primary-container text-on-primary font-medium">Unlock</button>
+      </form>
+    </div>
+  </section>
+
+  <div id="app-shell">
   <header class="sticky top-0 z-40 bg-surface-container-lowest border-b border-outline-variant/40">
     <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
       <div class="flex items-center gap-6">
@@ -44,6 +59,7 @@
           <a href="/" data-nav="dashboard" class="h-full flex items-center text-primary border-b-2 border-primary font-medium">Dashboard</a>
           <a href="/expenses" data-nav="expenses" class="h-full flex items-center text-on-surface-variant hover:text-on-surface">Expenses</a>
           <a href="/analytics" data-nav="analytics" class="h-full flex items-center text-on-surface-variant hover:text-on-surface">Analytics</a>
+          <a href="/settings/security" data-nav="security" class="h-full flex items-center text-on-surface-variant hover:text-on-surface">Security</a>
         </nav>
       </div>
       <button id="header-add-expense" type="button" data-open-expense-modal class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-container text-on-primary font-medium">
@@ -231,6 +247,42 @@
         <div id="analytics-insights" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
       </div>
     </section>
+
+    <section id="view-security" class="hidden space-y-6">
+      <div>
+        <h1 class="text-3xl font-bold">Security</h1>
+        <p class="text-on-surface-variant">Manage API key access for this browser session.</p>
+      </div>
+      <p id="security-error" class="hidden text-error"></p>
+      <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm space-y-3 max-w-xl">
+        <p class="text-sm text-secondary">Current key prefix</p>
+        <p id="security-key-prefix" class="font-mono text-lg">—</p>
+        <p class="text-sm text-secondary">Created</p>
+        <p id="security-created-at">—</p>
+        <p class="text-sm text-secondary">Last used</p>
+        <p id="security-last-used">—</p>
+        <div class="flex flex-wrap gap-2 pt-2">
+          <button id="security-rotate-start" type="button" class="px-4 py-2 rounded-lg bg-primary text-on-primary">Rotate API Key</button>
+          <button id="security-lock" type="button" class="px-4 py-2 rounded-lg bg-surface-container">Lock</button>
+        </div>
+      </div>
+      <div id="security-rotate-form" class="hidden bg-surface-container-lowest rounded-xl p-5 shadow-sm max-w-xl space-y-3">
+        <label class="block text-sm">Administrator password
+          <input id="security-admin-password" type="password" autocomplete="off" class="mt-1 w-full rounded-lg border border-outline-variant/50 p-2">
+        </label>
+        <p id="security-rotate-error" class="hidden text-error text-sm"></p>
+        <div class="flex gap-2">
+          <button id="security-rotate-submit" type="button" class="px-4 py-2 rounded-lg bg-primary-container text-on-primary">Confirm rotation</button>
+          <button id="security-rotate-cancel" type="button" class="px-4 py-2 rounded-lg bg-surface-container">Cancel</button>
+        </div>
+      </div>
+      <div id="rotation-result-panel" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-5 max-w-xl space-y-2">
+        <p class="font-semibold text-amber-900">Save your new API key now</p>
+        <p class="text-sm text-amber-900">This key is shown once and cannot be recovered after you leave this page.</p>
+        <p id="rotation-new-key" class="font-mono text-sm break-all p-2 bg-white rounded border"></p>
+        <button id="security-copy-key" type="button" class="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm">Copy</button>
+      </div>
+    </section>
   </main>
 
   <div id="expense-modal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
@@ -249,6 +301,7 @@
         <button id="expense-submit" type="submit" class="w-full py-2 rounded-lg bg-primary-container text-on-primary font-medium">Save Expense</button>
       </form>
     </div>
+  </div>
   </div>
 
   <script type="module" src="/static/js/app.js"></script>

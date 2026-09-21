@@ -8,7 +8,7 @@ def test_index_returns_frontend_html(client):
 def test_static_js_asset_reachable(client):
     response = client.get("/static/js/app.js")
     assert response.status_code == 200
-    assert b"initApp" in response.data
+    assert b"bootstrap" in response.data
 
 
 def test_static_css_asset_reachable(client):
@@ -26,6 +26,12 @@ def test_analytics_path_returns_frontend_html(client):
     response = client.get("/analytics")
     assert response.status_code == 200
     assert b'id="view-analytics"' in response.data
+
+
+def test_security_path_returns_frontend_html(client):
+    response = client.get("/settings/security")
+    assert response.status_code == 200
+    assert b'id="view-security"' in response.data
 
 
 def test_expenses_api_still_json_without_html_accept(client):

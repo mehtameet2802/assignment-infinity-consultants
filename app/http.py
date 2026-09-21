@@ -36,6 +36,35 @@ def invalid_date_range_response():
     )
 
 
+def unauthorized_response():
+    return error_response(
+        "unauthorized",
+        [{"field": None, "message": "A valid API key is required"}],
+        401,
+    )
+
+
+def auth_not_configured_response():
+    return error_response(
+        "auth_not_configured",
+        [{"field": None, "message": "API authentication is not configured"}],
+        503,
+    )
+
+
+def invalid_admin_password_response():
+    return error_response(
+        "invalid_admin_password",
+        [
+            {
+                "field": "password",
+                "message": "Administrator password is incorrect",
+            }
+        ],
+        403,
+    )
+
+
 def invalid_month_range_response():
     return error_response(
         "invalid_month_range",

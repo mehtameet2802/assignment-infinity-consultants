@@ -14,8 +14,9 @@ A Flask-based personal spending tracker that lets you record expenses, filter tr
 - Deterministic backend insights
 - Automated API tests (pytest)
 - Responsive HTML/CSS/JavaScript UI with Chart.js
+- API-key authentication (SQLite-backed keys, browser unlock flow, rotation with grace period)
 
-Authentication and public deployment are **not** part of this MVP.
+Public deployment is optional and not included by default.
 
 ## Tech Stack
 
@@ -78,6 +79,57 @@ Health check: `GET /health` → `{"status":"ok"}`
 
 The SQLite database file is created automatically on first run.
 
+## Authentication
+
+Single-user API-key protection for expense, dashboard, and analytics JSON endpoints. Keys are stored in SQLite as **HMAC-SHA256** hashes using `API_KEY_PEPPER`; raw keys are never written to the database or logs. The application **never rewrites `.env`** at runtime.
+
+### Environment variables
+
+| Variable | Purpose |
+|----------|---------|
+| `AUTH_ENABLED` | `true` to require API keys on protected routes |
+| `API_KEY_PEPPER` | High-entropy secret for HMAC hashing before storage |
+| `ADMIN_PASSWORD_HASH` | Werkzeug hash used to authorize key rotation |
+
+See `.env.example` for placeholders.
+
+### Bootstrap (production)
+
+```bash
+# 1. Set AUTH_ENABLED=true, API_KEY_PEPPER, and generate ADMIN_PASSWORD_HASH in .env
+flask --app 'app:create_app()' auth hash-password
+
+# 2. Create the first key (printed once; cannot be recovered)
+flask --app 'app:create_app()' auth create-initial-key
+```
+
+### Browser unlock
+
+1. Open the app; enter the API key on the unlock screen.
+2. The key is stored in `sessionStorage` as `spend_tracker_api_key` for the tab session.
+3. All protected API calls send `X-API-Key`.
+4. Use **Security** (`/settings/security`) to view prefix/metadata, rotate the key, or **Lock** (clears session only; does not revoke the server key).
+
+### Rotation and grace period
+
+`POST /auth/api-key/rotate` requires the current API key and administrator password. The response includes the **new raw key once**. The previous key remains valid for **five minutes** (`previous_key_valid_until`), then expires automatically. If the response is interrupted, retry rotation with the old key during the grace window.
+
+### Example request
+
+Use HTTPS outside local development.
+
+```bash
+curl \
+  -H "X-API-Key: YOUR_KEY" \
+  "http://127.0.0.1:5000/dashboard?month=2026-09"
+```
+
+### Recovery
+
+If a key is lost after the grace window, generate a new initial key only when no usable key exists (`flask auth create-initial-key`), or insert a new key through a controlled admin process on the server. There is no API to recover a lost raw key.
+
+Set `AUTH_ENABLED=false` for local development without keys (default in tests).
+
 ## Tests
 
 ```bash
@@ -85,7 +137,7 @@ npm ci    # once per clone, if not already run during setup
 pytest
 ```
 
-Python tests cover the API, analytics, and dashboard. A small jsdom suite (`tests/js/frontend_regression.test.mjs`) runs via pytest when Node.js is installed. Use `npm ci` so installs match `package-lock.json`; if `node_modules/` is missing, pytest may attempt `npm install` instead (network required).
+Python tests cover the API, analytics, dashboard, and authentication. jsdom suites (`tests/js/frontend_regression.test.mjs`, `tests/js/auth_regression.test.mjs`) run via pytest when Node.js is installed. Use `npm ci` so installs match `package-lock.json`; if `node_modules/` is missing, pytest may attempt `npm install` instead (network required).
 
 ## API Overview
 
@@ -112,6 +164,14 @@ Single-month dashboard: totals, month-over-month change, breakdowns, top categor
 ### `GET /summary?start_month=YYYY-MM&end_month=YYYY-MM`
 
 Inclusive multi-month analytics: overall totals, category series, payment-method series, active category × payment-method combinations, and deterministic insights.
+
+### Authentication (when `AUTH_ENABLED=true`)
+
+Send `X-API-Key` on protected routes. Public: `GET /health`, SPA HTML routes (`/`, `/expenses` with `Accept: text/html`, `/analytics`, `/settings/security`), and `/static/*`.
+
+- `GET /auth/verify` — validate key; returns prefix metadata
+- `GET /auth/api-key` — key metadata (no hash, no full key)
+- `POST /auth/api-key/rotate` — body `{"password":"..."}`; returns new raw key once
 
 ## Expense Fields
 
@@ -194,7 +254,7 @@ Other codes include `invalid_json`, `invalid_date_range`, and `invalid_month_ran
 
 ## Assumptions
 
-- Single-user MVP (no auth)
+- Single-user MVP with one active API-key set at a time
 - INR display in the UI
 - Fixed categories and payment methods in v1
 - No edit/delete expense endpoints in v1
@@ -202,7 +262,7 @@ Other codes include `invalid_json`, `invalid_date_range`, and `invalid_month_ran
 
 ## What I Would Improve With More Time
 
-- Authentication and per-user data isolation
+- Multi-user accounts and per-user data isolation
 - PostgreSQL and Alembic migrations
 - Edit/delete expenses
 - Configurable categories and payment methods

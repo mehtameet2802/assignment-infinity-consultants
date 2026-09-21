@@ -6,7 +6,10 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-JS_TEST = REPO_ROOT / "tests" / "js" / "frontend_regression.test.mjs"
+JS_TESTS = [
+    REPO_ROOT / "tests" / "js" / "frontend_regression.test.mjs",
+    REPO_ROOT / "tests" / "js" / "auth_regression.test.mjs",
+]
 
 
 def _ensure_jsdom_installed() -> None:
@@ -31,13 +34,15 @@ def test_frontend_js_regression_suite():
 
     _ensure_jsdom_installed()
 
-    result = subprocess.run(
-        [node, "--test", str(JS_TEST)],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        env={**os.environ, "NODE_NO_WARNINGS": "1"},
-    )
-    assert result.returncode == 0, (
-        f"frontend regression tests failed\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
-    )
+    for js_test in JS_TESTS:
+        result = subprocess.run(
+            [node, "--test", str(js_test)],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "NODE_NO_WARNINGS": "1"},
+        )
+        assert result.returncode == 0, (
+            f"frontend regression tests failed for {js_test.name}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )

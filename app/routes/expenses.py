@@ -17,6 +17,7 @@ from app.schemas import (
     ExpenseListResponse,
     ExpenseResponse,
 )
+from app.services.auth import require_api_key
 from app.spa import client_wants_html
 
 _STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
@@ -26,6 +27,9 @@ expenses_bp = Blueprint("expenses", __name__, url_prefix="/expenses")
 
 @expenses_bp.route("", methods=["POST"])
 def create_expense():
+    auth_error = require_api_key()
+    if auth_error is not None:
+        return auth_error
     body = request.get_json(silent=True)
     if body is None:
         return invalid_json_response()
@@ -55,6 +59,10 @@ def create_expense():
 def list_expenses():
     if client_wants_html(request):
         return send_from_directory(_STATIC_DIR, "index.html")
+
+    auth_error = require_api_key()
+    if auth_error is not None:
+        return auth_error
 
     try:
         query_params = ExpenseListQuery.model_validate(request.args.to_dict())

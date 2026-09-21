@@ -39,9 +39,9 @@ test("expenseTableRowHtml does not emit raw HTML from notes", async () => {
 
 test("initAnalytics runs before initNavigation in app bootstrap", () => {
   const appSource = readFileSync(join(staticJs, "app.js"), "utf8");
-  const initAppBlock = appSource.slice(appSource.indexOf("function initApp()"));
-  const analyticsIdx = initAppBlock.indexOf("initAnalytics(");
-  const navigationIdx = initAppBlock.indexOf("initNavigation(");
+  const initBlock = appSource.slice(appSource.indexOf("function startAppViews()"));
+  const analyticsIdx = initBlock.indexOf("initAnalytics(");
+  const navigationIdx = initBlock.indexOf("initNavigation(");
   assert.ok(analyticsIdx > -1 && navigationIdx > -1);
   assert.ok(analyticsIdx < navigationIdx);
 });
