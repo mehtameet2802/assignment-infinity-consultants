@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
 
 from app.database import Base, engine
+from app.routes.dashboard import dashboard_bp
 from app.routes.expenses import expenses_bp
 
 
@@ -14,6 +15,7 @@ def create_app(config_overrides: dict | None = None) -> Flask:
         Base.metadata.create_all(bind=engine)
 
     app.register_blueprint(expenses_bp)
+    app.register_blueprint(dashboard_bp)
 
     @app.get("/health")
     def health_check():
