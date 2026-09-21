@@ -375,9 +375,15 @@ def test_empty_entire_range_behavior(client):
     assert data["insights"] == []
 
 
-def test_insights_empty_for_one_month_range(client, db_session: Session):
+def test_one_month_range_has_summary_and_leaders(client, db_session: Session):
     _add(db_session, amount="100.00", expense_date=date(2026, 4, 1))
-    assert _summary(client, "2026-04", "2026-04").get_json()["insights"] == []
+    insights = _summary(client, "2026-04", "2026-04").get_json()["insights"]
+    types = {item["type"] for item in insights}
+    assert "range_summary" in types
+    assert "range_top_category" in types
+    assert "range_top_payment_method" in types
+    assert "range_top_category_payment" in types
+    assert "range_start_end_change" not in types
 
 
 def test_insights_empty_for_all_zero_range(client):
@@ -390,6 +396,44 @@ def test_overall_insight_generated(client, db_session: Session):
     _add(db_session, amount="12500.00", expense_date=date(2026, 9, 1))
     insights = _summary(client, "2026-08", "2026-09").get_json()["insights"]
     assert any(item["type"] == "overall_change" for item in insights)
+
+
+def test_range_insights_cover_full_selected_period(client, db_session: Session):
+    _add(db_session, amount="100.00", category="Groceries", expense_date=date(2026, 4, 1))
+    _add(db_session, amount="350.00", category="Travel", expense_date=date(2026, 5, 1))
+    _add(db_session, amount="300.00", category="Groceries", expense_date=date(2026, 6, 1))
+    insights = _summary(client, "2026-04", "2026-06").get_json()["insights"]
+    by_type = {item["type"]: item for item in insights}
+
+    assert "₹750.00" in by_type["range_summary"]["message"]
+    assert "₹250.00" in by_type["range_summary"]["message"]
+    assert "April 2026" in by_type["range_start_end_change"]["message"]
+    assert "June 2026" in by_type["range_start_end_change"]["message"]
+    assert by_type["range_peak_month"]["month"] == "2026-05"
+    assert by_type["range_low_month"]["month"] == "2026-04"
+    assert "Groceries" in by_type["range_top_category"]["message"]
+
+
+def test_range_start_end_change_handles_zero_start_without_percentage(client, db_session: Session):
+    _add(db_session, amount="250.00", expense_date=date(2026, 5, 1))
+    insight = next(
+        item
+        for item in _summary(client, "2026-04", "2026-05").get_json()["insights"]
+        if item["type"] == "range_start_end_change"
+    )
+    assert "rose from ₹0.00" in insight["message"]
+    assert "%" not in insight["message"]
+
+
+def test_range_start_end_change_handles_zero_at_both_ends(client, db_session: Session):
+    _add(db_session, amount="250.00", expense_date=date(2026, 5, 1))
+    insight = next(
+        item
+        for item in _summary(client, "2026-04", "2026-06").get_json()["insights"]
+        if item["type"] == "range_start_end_change"
+    )
+    assert "₹0.00 in both April 2026 and June 2026" in insight["message"]
+    assert "recorded between" in insight["message"]
 
 
 def test_largest_category_increase_insight(client, db_session: Session):

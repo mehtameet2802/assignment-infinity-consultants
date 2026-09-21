@@ -8,6 +8,12 @@ export function destroyChart(key) {
   }
 }
 
+export function destroyAllCharts() {
+  for (const key of [...chartInstances.keys()]) {
+    destroyChart(key);
+  }
+}
+
 export function renderCategoryDonut(canvas, breakdown, totalSpend) {
   destroyChart("category-donut");
   const positive = breakdown.filter((item) => Number(item.amount) > 0);

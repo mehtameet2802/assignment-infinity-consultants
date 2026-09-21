@@ -210,58 +210,199 @@ def _generate_insights(
     payment_method_monthly: list[PaymentMethodMonthlySeries],
     category_payment_monthly: list[CategoryPaymentMonthlySeries],
 ) -> list[Insight]:
-    if len(months) < 2:
+    range_total = _quantize_money(sum((point.amount for point in monthly_totals), Decimal("0")))
+    if range_total <= 0:
         return []
 
     final_month = months[-1]
-    final_overall = monthly_totals[-1]
-    insights: list[Insight] = []
+    range_label = f"{_month_label(months[0])} to {_month_label(final_month)}"
+    monthly_average = _quantize_money(range_total / Decimal(len(months)))
+    insights: list[Insight] = [
+        Insight(
+            type="range_summary",
+            month=final_month,
+            message=(
+                f"Spending from {range_label} totalled {_format_inr(range_total)}, "
+                f"averaging {_format_inr(monthly_average)} per month."
+            ),
+        )
+    ]
 
-    if final_overall.change_type == ChangeType.INCREASE.value:
-        pct = final_overall.change_percentage
-        pct_text = f" ({pct:+.2f}%)" if pct is not None else ""
+    if len(months) > 1:
+        first_overall = monthly_totals[0]
+        final_overall = monthly_totals[-1]
+        range_change = final_overall.amount - first_overall.amount
+        if first_overall.amount > 0:
+            range_pct = _quantize_money(
+                (range_change / first_overall.amount) * Decimal("100")
+            )
+            if range_change > 0:
+                change_message = (
+                    f"Spending increased by {_format_inr(range_change)} "
+                    f"({range_pct:+.2f}%) from {_month_label(months[0])} "
+                    f"to {_month_label(final_month)}."
+                )
+            elif range_change < 0:
+                change_message = (
+                    f"Spending decreased by {_format_inr(abs(range_change))} "
+                    f"({range_pct:+.2f}%) from {_month_label(months[0])} "
+                    f"to {_month_label(final_month)}."
+                )
+            else:
+                change_message = (
+                    f"Spending was unchanged from {_month_label(months[0])} "
+                    f"to {_month_label(final_month)} at {_format_inr(final_overall.amount)}."
+                )
+        elif final_overall.amount > 0:
+            change_message = (
+                f"Spending rose from {_format_inr(Decimal('0'))} in "
+                f"{_month_label(months[0])} to {_format_inr(final_overall.amount)} "
+                f"in {_month_label(final_month)}."
+            )
+        else:
+            change_message = (
+                f"Spending was {_format_inr(Decimal('0'))} in both "
+                f"{_month_label(months[0])} and {_month_label(final_month)}, "
+                "with spending recorded between those months."
+            )
         insights.append(
             Insight(
-                type="overall_change",
+                type="range_start_end_change",
                 month=final_month,
+                message=change_message,
+            )
+        )
+
+        peak = max(monthly_totals, key=lambda point: point.amount)
+        lowest = min(monthly_totals, key=lambda point: point.amount)
+        insights.append(
+            Insight(
+                type="range_peak_month",
+                month=peak.month,
                 message=(
-                    f"Overall spending increased by {_format_inr(final_overall.change_amount)}"
-                    f"{pct_text} in {_month_label(final_month)}."
+                    f"{_month_label(peak.month)} was the highest-spending month "
+                    f"at {_format_inr(peak.amount)}."
                 ),
             )
         )
-    elif final_overall.change_type == ChangeType.DECREASE.value:
-        pct = final_overall.change_percentage
-        pct_text = f" ({pct:+.2f}%)" if pct is not None else ""
+        if lowest.amount != peak.amount:
+            insights.append(
+                Insight(
+                    type="range_low_month",
+                    month=lowest.month,
+                    message=(
+                        f"{_month_label(lowest.month)} was the lowest-spending month "
+                        f"at {_format_inr(lowest.amount)}."
+                    ),
+                )
+            )
+
+        final_overall = monthly_totals[-1]
+
+        if final_overall.change_type == ChangeType.INCREASE.value:
+            pct = final_overall.change_percentage
+            pct_text = f" ({pct:+.2f}%)" if pct is not None else ""
+            insights.append(
+                Insight(
+                    type="overall_change",
+                    month=final_month,
+                    message=(
+                        f"Compared with the previous month, spending increased by "
+                        f"{_format_inr(final_overall.change_amount)}{pct_text} in "
+                        f"{_month_label(final_month)}."
+                    ),
+                )
+            )
+        elif final_overall.change_type == ChangeType.DECREASE.value:
+            pct = final_overall.change_percentage
+            pct_text = f" ({pct:+.2f}%)" if pct is not None else ""
+            insights.append(
+                Insight(
+                    type="overall_change",
+                    month=final_month,
+                    message=(
+                        f"Compared with the previous month, spending decreased by "
+                        f"{_format_inr(abs(final_overall.change_amount))}{pct_text} in "
+                        f"{_month_label(final_month)}."
+                    ),
+                )
+            )
+        elif final_overall.change_type == ChangeType.NEW.value:
+            insights.append(
+                Insight(
+                    type="overall_change",
+                    month=final_month,
+                    message=(
+                        f"Overall spending appeared for the first time in {_month_label(final_month)} "
+                        f"at {_format_inr(final_overall.amount)}."
+                    ),
+                )
+            )
+        elif final_overall.change_type == ChangeType.RESUMED.value:
+            insights.append(
+                Insight(
+                    type="overall_change",
+                    month=final_month,
+                    message=(
+                        f"Overall spending resumed in {_month_label(final_month)} "
+                        f"at {_format_inr(final_overall.amount)}."
+                    ),
+                )
+            )
+
+    category_totals = [
+        (series.category, sum((point.amount for point in series.months), Decimal("0")))
+        for series in category_monthly
+    ]
+    top_category, top_category_total = max(category_totals, key=lambda item: item[1])
+    if top_category_total > 0:
         insights.append(
             Insight(
-                type="overall_change",
+                type="range_top_category",
                 month=final_month,
                 message=(
-                    f"Overall spending decreased by {_format_inr(abs(final_overall.change_amount))}"
-                    f"{pct_text} in {_month_label(final_month)}."
+                    f"{top_category} was the highest-spending category across the selected "
+                    f"period at {_format_inr(top_category_total)}."
                 ),
             )
         )
-    elif final_overall.change_type == ChangeType.NEW.value:
+
+    payment_totals = [
+        (series.payment_method, sum((point.amount for point in series.months), Decimal("0")))
+        for series in payment_method_monthly
+    ]
+    top_payment, top_payment_total = max(payment_totals, key=lambda item: item[1])
+    if top_payment_total > 0:
         insights.append(
             Insight(
-                type="overall_change",
+                type="range_top_payment_method",
                 month=final_month,
                 message=(
-                    f"Overall spending appeared for the first time in {_month_label(final_month)} "
-                    f"at {_format_inr(final_overall.amount)}."
+                    f"{top_payment} accounted for the most spending across the selected "
+                    f"period at {_format_inr(top_payment_total)}."
                 ),
             )
         )
-    elif final_overall.change_type == ChangeType.RESUMED.value:
+
+    if category_payment_monthly:
+        combo_totals = [
+            (
+                series.category,
+                series.payment_method,
+                sum((point.amount for point in series.months), Decimal("0")),
+            )
+            for series in category_payment_monthly
+        ]
+        top_combo_category, top_combo_payment, top_combo_total = max(
+            combo_totals, key=lambda item: item[2]
+        )
         insights.append(
             Insight(
-                type="overall_change",
+                type="range_top_category_payment",
                 month=final_month,
                 message=(
-                    f"Overall spending resumed in {_month_label(final_month)} "
-                    f"at {_format_inr(final_overall.amount)}."
+                    f"{top_combo_category} paid using {top_combo_payment} was the "
+                    f"highest-spending combination at {_format_inr(top_combo_total)}."
                 ),
             )
         )

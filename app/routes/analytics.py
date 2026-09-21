@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from app.analytics_schemas import SummaryQuery
 from app.database import get_db
 from app.http import error_response, invalid_month_range_response, validation_error_response
+from app.services.auth import require_api_key
 from app.services.analytics import get_summary
 
 analytics_bp = Blueprint("analytics", __name__)
@@ -11,6 +12,9 @@ analytics_bp = Blueprint("analytics", __name__)
 
 @analytics_bp.route("/summary", methods=["GET"])
 def summary():
+    auth_error = require_api_key()
+    if auth_error is not None:
+        return auth_error
     start_month = request.args.get("start_month")
     end_month = request.args.get("end_month")
 

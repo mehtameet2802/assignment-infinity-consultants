@@ -2,6 +2,7 @@ import os
 
 # Must be set before app modules create the engine.
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["AUTH_ENABLED"] = "false"
 
 import pytest
 from flask import Flask
@@ -25,8 +26,12 @@ def db_session() -> Session:
 
 @pytest.fixture
 def app(db_session: Session) -> Flask:
-    application = create_app()
-    application.config["DB_SESSION"] = db_session
+    application = create_app(
+        {
+            "DB_SESSION": db_session,
+            "AUTH_ENABLED": False,
+        }
+    )
     return application
 
 

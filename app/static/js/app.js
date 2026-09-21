@@ -1,5 +1,14 @@
 import { ApiError, apiPost } from "./api.js";
+import {
+  onUnauthorized,
+  resolveAuthBootstrap,
+  showAuthMisconfiguredView,
+  showUnlockView,
+  unlockWithKey,
+  verifyStoredKey,
+} from "./auth.js";
 import { getAnalyticsRange, initAnalytics, loadAnalytics } from "./analytics.js";
+import { destroyAllCharts } from "./charts.js";
 import {
   getSelectedDashboardMonth,
   initDashboard,
@@ -15,25 +24,41 @@ import {
   shiftMonth,
   todayIsoDate,
 } from "./formatters.js";
+import { initSecurity, loadSecurityView } from "./security.js";
 
 let activeView = "dashboard";
 let expenseSubmitting = false;
+let appInitialized = false;
 
 const VIEW_TO_PATH = {
   dashboard: "/",
   expenses: "/expenses",
   analytics: "/analytics",
+  security: "/settings/security",
 };
 
 function pathToView(path) {
   if (path === "/expenses") return "expenses";
   if (path === "/analytics") return "analytics";
+  if (path === "/settings/security") return "security";
   return "dashboard";
 }
 
 function updateAddExpenseButtons(view) {
   const headerBtn = document.getElementById("header-add-expense");
   if (headerBtn) headerBtn.classList.toggle("hidden", view !== "dashboard");
+}
+
+function clearSensitiveUi() {
+  destroyAllCharts();
+  document.getElementById("dashboard-recent-body").innerHTML = "";
+  document.getElementById("expenses-table-body").innerHTML = "";
+  document.getElementById("analytics-insights").innerHTML = "";
+}
+
+function onLock() {
+  clearSensitiveUi();
+  showUnlockView();
 }
 
 function showToast(amount) {
@@ -49,7 +74,7 @@ function showToast(amount) {
 function setActiveView(view) {
   activeView = view;
   updateAddExpenseButtons(view);
-  ["dashboard", "expenses", "analytics"].forEach((name) => {
+  ["dashboard", "expenses", "analytics", "security"].forEach((name) => {
     document.getElementById(`view-${name}`).classList.toggle("hidden", name !== view);
     document.querySelectorAll(`[data-nav="${name}"]`).forEach((link) => {
       link.classList.toggle("text-primary", name === view);
@@ -63,6 +88,7 @@ function setActiveView(view) {
     const [startMonth, endMonth] = getAnalyticsRange();
     loadAnalytics(startMonth, endMonth);
   }
+  if (view === "security") loadSecurityView();
 }
 
 function navigateTo(view, { replace = false } = {}) {
@@ -194,12 +220,27 @@ function bindGlobalActions() {
   document.getElementById("toast-close").addEventListener("click", () => {
     document.getElementById("success-toast").classList.add("hidden");
   });
+  document.getElementById("unlock-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const errorEl = document.getElementById("unlock-error");
+    errorEl.classList.add("hidden");
+    const result = await unlockWithKey(document.getElementById("unlock-api-key").value);
+    if (!result.ok) {
+      errorEl.textContent = result.message;
+      errorEl.classList.remove("hidden");
+      return;
+    }
+    document.getElementById("unlock-api-key").value = "";
+    if (!appInitialized) {
+      startAppViews();
+    } else {
+      setActiveView(pathToView(window.location.pathname));
+    }
+  });
 }
 
-function initApp() {
-  populateSelects();
-  bindGlobalActions();
-
+function startAppViews() {
+  appInitialized = true;
   const month = currentMonth();
   initDashboard(month, (nextMonth) => {
     loadDashboard(nextMonth);
@@ -208,9 +249,33 @@ function initApp() {
   const analyticsEnd = month;
   const analyticsStart = shiftMonth(month, -5);
   initAnalytics(analyticsStart, analyticsEnd);
+  initSecurity();
   initNavigation();
-
-  loadDashboard(month);
 }
 
-initApp();
+async function bootstrap() {
+  populateSelects();
+  bindGlobalActions();
+  onUnauthorized(onLock);
+  window.addEventListener("spend-tracker-lock", onLock);
+
+  const authState = await resolveAuthBootstrap();
+  if (authState.mode === "misconfigured") {
+    showAuthMisconfiguredView();
+    return;
+  }
+  if (authState.mode === "open") {
+    document.getElementById("view-unlock").classList.add("hidden");
+    document.getElementById("app-shell").classList.remove("hidden");
+    startAppViews();
+    return;
+  }
+  const verified = await verifyStoredKey();
+  if (verified) {
+    startAppViews();
+  } else {
+    showUnlockView();
+  }
+}
+
+bootstrap();

@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from app.dashboard_schemas import DashboardQuery
 from app.database import get_db
 from app.http import error_response, validation_error_response
+from app.services.auth import require_api_key
 from app.services.dashboard import get_dashboard
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -11,6 +12,9 @@ dashboard_bp = Blueprint("dashboard", __name__)
 
 @dashboard_bp.route("/dashboard", methods=["GET"])
 def dashboard():
+    auth_error = require_api_key()
+    if auth_error is not None:
+        return auth_error
     month = request.args.get("month")
     if month is None or month == "":
         return error_response(
