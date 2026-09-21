@@ -1,5 +1,5 @@
-import { apiGet } from "./api.js";
-import { formatCurrency, formatDisplayDate } from "./formatters.js";
+import { ApiError, apiGet } from "./api.js";
+import { escapeHtml, formatCurrency, formatDisplayDate } from "./formatters.js";
 
 const state = {
   offset: 0,
@@ -31,6 +31,7 @@ function showError(message) {
   const el = document.getElementById("expenses-error");
   el.textContent = message;
   el.classList.remove("hidden");
+  document.getElementById("expenses-retry").classList.remove("hidden");
 }
 
 function hideError() {
@@ -39,6 +40,17 @@ function hideError() {
 
 function hasActiveFilters() {
   return Object.values(state.filters).some(Boolean);
+}
+
+export function expenseTableRowHtml(item) {
+  return `
+        <tr class="border-t border-outline-variant/20">
+          <td class="py-3 px-4">${formatDisplayDate(item.date)}</td>
+          <td class="py-3 px-4">${escapeHtml(item.category)}</td>
+          <td class="py-3 px-4">${escapeHtml(item.payment_method)}</td>
+          <td class="py-3 px-4">${item.note ? escapeHtml(item.note) : "—"}</td>
+          <td class="py-3 px-4 text-right font-headline-sm">${formatCurrency(item.amount)}</td>
+        </tr>`;
 }
 
 function renderExpenses(data) {
@@ -52,18 +64,7 @@ function renderExpenses(data) {
     empty.classList.remove("hidden");
   } else {
     empty.classList.add("hidden");
-    tbody.innerHTML = data.items
-      .map(
-        (item) => `
-        <tr class="border-t border-outline-variant/20">
-          <td class="py-3 px-4">${formatDisplayDate(item.date)}</td>
-          <td class="py-3 px-4">${item.category}</td>
-          <td class="py-3 px-4">${item.payment_method}</td>
-          <td class="py-3 px-4">${item.note || "—"}</td>
-          <td class="py-3 px-4 text-right font-headline-sm">${formatCurrency(item.amount)}</td>
-        </tr>`
-      )
-      .join("");
+    tbody.innerHTML = data.items.map((item) => expenseTableRowHtml(item)).join("");
   }
 
   const start = data.total === 0 ? 0 : data.offset + 1;
@@ -80,8 +81,13 @@ export async function loadExpenses() {
   try {
     const data = await apiGet(buildQuery());
     renderExpenses(data);
-  } catch {
-    showError("Couldn't load expenses.");
+  } catch (error) {
+    if (error instanceof ApiError && error.body?.error === "invalid_date_range") {
+      const detail = error.body.details?.[0]?.message || "Invalid date range.";
+      showError(detail);
+    } else {
+      showError("Couldn't load expenses.");
+    }
   } finally {
     setLoading(false);
   }

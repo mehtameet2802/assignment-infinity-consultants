@@ -1,6 +1,7 @@
 import { apiGet } from "./api.js";
 import { renderCategoryDonut } from "./charts.js";
 import {
+  escapeHtml,
   formatChangeSummary,
   formatCurrency,
   formatDisplayDate,
@@ -131,9 +132,9 @@ function renderDashboard(data) {
       (item) => `
       <tr class="border-t border-outline-variant/20">
         <td class="py-3 px-4">${formatDisplayDate(item.date)}</td>
-        <td class="py-3 px-4">${item.category}</td>
-        <td class="py-3 px-4">${item.payment_method}</td>
-        <td class="py-3 px-4">${item.note || "—"}</td>
+        <td class="py-3 px-4">${escapeHtml(item.category)}</td>
+        <td class="py-3 px-4">${escapeHtml(item.payment_method)}</td>
+        <td class="py-3 px-4">${item.note ? escapeHtml(item.note) : "—"}</td>
         <td class="py-3 px-4 text-right font-headline-sm">${formatCurrency(item.amount)}</td>
       </tr>`
     )

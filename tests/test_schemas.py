@@ -4,7 +4,7 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from app.constants import Category, PaymentMethod
+from app.constants import MAX_EXPENSE_AMOUNT, Category, PaymentMethod
 from app.schemas import ExpenseCreate
 
 
@@ -56,6 +56,36 @@ def test_expense_create_rejects_invalid_payment_method():
             amount=Decimal("10"),
             category=Category.OTHER,
             payment_method="Paytm",
+            date=date.today(),
+        )
+
+
+def test_expense_create_accepts_max_amount():
+    payload = ExpenseCreate(
+        amount=MAX_EXPENSE_AMOUNT,
+        category=Category.OTHER,
+        payment_method=PaymentMethod.CASH,
+        date=date.today(),
+    )
+    assert payload.amount == MAX_EXPENSE_AMOUNT
+
+
+def test_expense_create_rejects_amount_above_max_precision():
+    with pytest.raises(ValidationError):
+        ExpenseCreate(
+            amount=MAX_EXPENSE_AMOUNT + Decimal("0.01"),
+            category=Category.OTHER,
+            payment_method=PaymentMethod.CASH,
+            date=date.today(),
+        )
+
+
+def test_expense_create_rejects_extreme_scientific_amount():
+    with pytest.raises(ValidationError):
+        ExpenseCreate(
+            amount=Decimal("1e100"),
+            category=Category.OTHER,
+            payment_method=PaymentMethod.CASH,
             date=date.today(),
         )
 

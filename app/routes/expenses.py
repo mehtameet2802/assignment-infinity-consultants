@@ -1,4 +1,6 @@
-from flask import Blueprint, jsonify, request
+import os
+
+from flask import Blueprint, jsonify, request, send_from_directory
 from pydantic import ValidationError
 from sqlalchemy import func, select
 
@@ -15,6 +17,9 @@ from app.schemas import (
     ExpenseListResponse,
     ExpenseResponse,
 )
+from app.spa import client_wants_html
+
+_STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
 
 expenses_bp = Blueprint("expenses", __name__, url_prefix="/expenses")
 
@@ -48,6 +53,9 @@ def create_expense():
 
 @expenses_bp.route("", methods=["GET"])
 def list_expenses():
+    if client_wants_html(request):
+        return send_from_directory(_STATIC_DIR, "index.html")
+
     try:
         query_params = ExpenseListQuery.model_validate(request.args.to_dict())
     except ValidationError as error:

@@ -1,6 +1,7 @@
 import { apiGet } from "./api.js";
-import { renderBarChart, renderLineChart } from "./charts.js";
+import { destroyChart, renderBarChart, renderLineChart } from "./charts.js";
 import {
+  escapeHtml,
   formatChangeAmount,
   formatCurrency,
   formatMonth,
@@ -18,6 +19,7 @@ function showError(message) {
   const el = document.getElementById("analytics-error");
   el.textContent = message;
   el.classList.remove("hidden");
+  document.getElementById("analytics-retry").classList.remove("hidden");
 }
 
 function hideError() {
@@ -153,10 +155,24 @@ function renderPaymentSection(data) {
   );
 }
 
-function populateComboSelectors(data) {
+function clearComboSection() {
+  const empty = document.getElementById("analytics-combo-empty");
+  empty.textContent = "No category/payment combinations have spending in this period.";
+  empty.classList.remove("hidden");
+  document.getElementById("analytics-combo-category").innerHTML = "";
+  document.getElementById("analytics-combo-payment").innerHTML = "";
+  document.getElementById("analytics-combo-table").innerHTML = "";
+  destroyChart("analytics-combo");
+}
+
+export function populateComboSelectors(data) {
   const categorySelect = document.getElementById("analytics-combo-category");
   const paymentSelect = document.getElementById("analytics-combo-payment");
   const combos = data.category_payment_monthly;
+  if (!combos.length) {
+    clearComboSection();
+    return;
+  }
   const categories = [...new Set(combos.map((item) => item.category))];
   categorySelect.innerHTML = categories.map((c) => `<option value="${c}">${c}</option>`).join("");
   const updatePayments = () => {
@@ -179,8 +195,7 @@ function populateComboSelectors(data) {
 function renderComboChart(data) {
   const empty = document.getElementById("analytics-combo-empty");
   if (!data.category_payment_monthly.length) {
-    empty.textContent = "No category/payment combinations have spending in this period.";
-    empty.classList.remove("hidden");
+    clearComboSection();
     return;
   }
   empty.classList.add("hidden");
@@ -228,8 +243,8 @@ function renderInsights(data) {
     .map(
       (insight) => `
       <div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/20">
-        <p class="font-label-sm text-secondary uppercase">${insight.type}</p>
-        <p class="font-body-md mt-1">${insight.message}</p>
+        <p class="font-label-sm text-secondary uppercase">${escapeHtml(insight.type)}</p>
+        <p class="font-body-md mt-1">${escapeHtml(insight.message)}</p>
       </div>`
     )
     .join("");
@@ -261,6 +276,13 @@ export async function loadAnalytics(startMonth, endMonth) {
   } finally {
     setLoading(false);
   }
+}
+
+export function getAnalyticsRange() {
+  return [
+    document.getElementById("analytics-start-month").value,
+    document.getElementById("analytics-end-month").value,
+  ];
 }
 
 export function initAnalytics(defaultStart, defaultEnd) {

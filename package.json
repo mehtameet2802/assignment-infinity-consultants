@@ -1,0 +1,8 @@
+{
+  "name": "spend-tracker-frontend-tests",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}
