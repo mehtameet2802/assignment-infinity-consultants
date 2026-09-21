@@ -19,6 +19,23 @@ import {
 let activeView = "dashboard";
 let expenseSubmitting = false;
 
+const VIEW_TO_PATH = {
+  dashboard: "/",
+  expenses: "/expenses",
+  analytics: "/analytics",
+};
+
+function pathToView(path) {
+  if (path === "/expenses") return "expenses";
+  if (path === "/analytics") return "analytics";
+  return "dashboard";
+}
+
+function updateAddExpenseButtons(view) {
+  const headerBtn = document.getElementById("header-add-expense");
+  if (headerBtn) headerBtn.classList.toggle("hidden", view !== "dashboard");
+}
+
 function showToast(amount) {
   const toast = document.getElementById("success-toast");
   document.getElementById("toast-amount").textContent = formatCurrency(amount);
@@ -31,6 +48,7 @@ function showToast(amount) {
 
 function setActiveView(view) {
   activeView = view;
+  updateAddExpenseButtons(view);
   ["dashboard", "expenses", "analytics"].forEach((name) => {
     document.getElementById(`view-${name}`).classList.toggle("hidden", name !== view);
     document.querySelectorAll(`[data-nav="${name}"]`).forEach((link) => {
@@ -47,20 +65,27 @@ function setActiveView(view) {
   }
 }
 
+function navigateTo(view, { replace = false } = {}) {
+  const path = VIEW_TO_PATH[view] || "/";
+  if (window.location.pathname !== path) {
+    const state = { view };
+    if (replace) history.replaceState(state, "", path);
+    else history.pushState(state, "", path);
+  }
+  setActiveView(view);
+}
+
 function initNavigation() {
-  window.addEventListener("hashchange", () => {
-    const hash = window.location.hash.replace("#", "") || "dashboard";
-    setActiveView(hash);
+  window.addEventListener("popstate", () => {
+    setActiveView(pathToView(window.location.pathname));
   });
   document.querySelectorAll("[data-nav]").forEach((link) => {
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      const target = link.getAttribute("data-nav");
-      window.location.hash = target;
+      navigateTo(link.getAttribute("data-nav"));
     });
   });
-  const initial = window.location.hash.replace("#", "") || "dashboard";
-  setActiveView(initial);
+  setActiveView(pathToView(window.location.pathname));
 }
 
 function toggleExpenseModal(open) {
@@ -178,7 +203,6 @@ function initApp() {
 
   const month = currentMonth();
   initDashboard(month, (nextMonth) => {
-    window.location.hash = "dashboard";
     loadDashboard(nextMonth);
   });
   initExpenses();

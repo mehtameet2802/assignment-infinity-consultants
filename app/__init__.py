@@ -23,9 +23,16 @@ def create_app(config_overrides: dict | None = None) -> Flask:
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(analytics_bp)
 
+    def spa_index():
+        return send_from_directory(_STATIC_DIR, "index.html")
+
     @app.get("/")
     def index_page():
-        return send_from_directory(_STATIC_DIR, "index.html")
+        return spa_index()
+
+    @app.get("/analytics")
+    def analytics_page():
+        return spa_index()
 
     @app.get("/health")
     def health_check():
