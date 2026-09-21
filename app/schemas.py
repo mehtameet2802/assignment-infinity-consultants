@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.constants import Category, PaymentMethod
+from app.constants import MAX_EXPENSE_AMOUNT, Category, PaymentMethod
 
 
 class ExpenseBase(BaseModel):
@@ -22,6 +22,10 @@ class ExpenseBase(BaseModel):
             raise ValueError("Amount must be greater than zero")
         if value != quantized:
             raise ValueError("Amount must have at most 2 decimal places")
+        if quantized > MAX_EXPENSE_AMOUNT:
+            raise ValueError(
+                f"Amount must not exceed {MAX_EXPENSE_AMOUNT}"
+            )
         return quantized
 
     @field_validator("date")

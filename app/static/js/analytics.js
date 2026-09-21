@@ -165,7 +165,7 @@ function clearComboSection() {
   destroyChart("analytics-combo");
 }
 
-function populateComboSelectors(data) {
+export function populateComboSelectors(data) {
   const categorySelect = document.getElementById("analytics-combo-category");
   const paymentSelect = document.getElementById("analytics-combo-payment");
   const combos = data.category_payment_monthly;

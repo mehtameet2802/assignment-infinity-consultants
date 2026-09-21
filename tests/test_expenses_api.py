@@ -74,6 +74,21 @@ def test_create_expense_rejects_sub_cent_amount(client):
     _assert_validation_error(response, field="amount")
 
 
+def test_create_expense_accepts_max_amount(client):
+    response = client.post(
+        "/expenses", json=_expense_payload(amount="9999999999.99")
+    )
+    assert response.status_code == 201
+    assert Decimal(str(response.get_json()["amount"])) == Decimal("9999999999.99")
+
+
+def test_create_expense_rejects_amount_above_max_precision(client):
+    response = client.post(
+        "/expenses", json=_expense_payload(amount="10000000000.00")
+    )
+    _assert_validation_error(response, field="amount")
+
+
 def test_create_expense_rejects_invalid_category(client):
     response = client.post("/expenses", json=_expense_payload(category="Paytm"))
     _assert_validation_error(response, field="category")
@@ -135,16 +150,20 @@ def test_list_expenses_filter_by_payment_method(client):
 
 
 def test_list_expenses_filter_by_date_range(client):
-    client.post("/expenses", json=_expense_payload(date="2026-09-01"))
-    client.post("/expenses", json=_expense_payload(date="2026-09-15"))
-    client.post("/expenses", json=_expense_payload(date="2026-10-01"))
+    client.post("/expenses", json=_expense_payload(date="2025-08-01"))
+    client.post("/expenses", json=_expense_payload(date="2025-08-15"))
+    client.post(
+        "/expenses",
+        json=_expense_payload(date="2025-09-01", note="Outside August range"),
+    )
 
     response = client.get(
         "/expenses",
-        query_string={"start_date": "2026-09-01", "end_date": "2026-09-30"},
+        query_string={"start_date": "2025-08-01", "end_date": "2025-08-31"},
     )
     data = response.get_json()
     assert data["total"] == 2
+    assert all(item["date"].startswith("2025-08") for item in data["items"])
 
 
 def test_list_expenses_combined_filters(client):

@@ -42,6 +42,17 @@ function hasActiveFilters() {
   return Object.values(state.filters).some(Boolean);
 }
 
+export function expenseTableRowHtml(item) {
+  return `
+        <tr class="border-t border-outline-variant/20">
+          <td class="py-3 px-4">${formatDisplayDate(item.date)}</td>
+          <td class="py-3 px-4">${escapeHtml(item.category)}</td>
+          <td class="py-3 px-4">${escapeHtml(item.payment_method)}</td>
+          <td class="py-3 px-4">${item.note ? escapeHtml(item.note) : "—"}</td>
+          <td class="py-3 px-4 text-right font-headline-sm">${formatCurrency(item.amount)}</td>
+        </tr>`;
+}
+
 function renderExpenses(data) {
   const tbody = document.getElementById("expenses-table-body");
   const empty = document.getElementById("expenses-empty");
@@ -53,18 +64,7 @@ function renderExpenses(data) {
     empty.classList.remove("hidden");
   } else {
     empty.classList.add("hidden");
-    tbody.innerHTML = data.items
-      .map(
-        (item) => `
-        <tr class="border-t border-outline-variant/20">
-          <td class="py-3 px-4">${formatDisplayDate(item.date)}</td>
-          <td class="py-3 px-4">${escapeHtml(item.category)}</td>
-          <td class="py-3 px-4">${escapeHtml(item.payment_method)}</td>
-          <td class="py-3 px-4">${item.note ? escapeHtml(item.note) : "—"}</td>
-          <td class="py-3 px-4 text-right font-headline-sm">${formatCurrency(item.amount)}</td>
-        </tr>`
-      )
-      .join("");
+    tbody.innerHTML = data.items.map((item) => expenseTableRowHtml(item)).join("");
   }
 
   const start = data.total === 0 ? 0 : data.offset + 1;
