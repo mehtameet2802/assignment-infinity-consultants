@@ -1,0 +1,13 @@
+.hidden {
+  display: none !important;
+}
+
+.chart-box {
+  position: relative;
+  height: 280px;
+}
+
+.chart-box-sm {
+  position: relative;
+  height: 220px;
+}
