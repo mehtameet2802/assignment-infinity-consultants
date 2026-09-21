@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -8,7 +8,7 @@ from app.constants import MAX_EXPENSE_AMOUNT, Category, PaymentMethod
 
 
 class ExpenseBase(BaseModel):
-    amount: Decimal = Field(..., gt=0)
+    amount: Decimal = Field(..., gt=0, max_digits=12, decimal_places=2)
     category: Category
     payment_method: PaymentMethod
     note: Optional[str] = Field(default=None, max_length=500)
@@ -17,15 +17,16 @@ class ExpenseBase(BaseModel):
     @field_validator("amount")
     @classmethod
     def amount_two_decimal_places(cls, value: Decimal) -> Decimal:
-        quantized = value.quantize(Decimal("0.01"))
+        if value > MAX_EXPENSE_AMOUNT:
+            raise ValueError(f"Amount must not exceed {MAX_EXPENSE_AMOUNT}")
+        try:
+            quantized = value.quantize(Decimal("0.01"))
+        except InvalidOperation:
+            raise ValueError("Amount is out of allowed range") from None
         if quantized <= 0:
             raise ValueError("Amount must be greater than zero")
         if value != quantized:
             raise ValueError("Amount must have at most 2 decimal places")
-        if quantized > MAX_EXPENSE_AMOUNT:
-            raise ValueError(
-                f"Amount must not exceed {MAX_EXPENSE_AMOUNT}"
-            )
         return quantized
 
     @field_validator("date")

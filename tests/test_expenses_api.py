@@ -89,6 +89,12 @@ def test_create_expense_rejects_amount_above_max_precision(client):
     _assert_validation_error(response, field="amount")
 
 
+def test_create_expense_rejects_extreme_scientific_amount(client):
+    response = client.post("/expenses", json=_expense_payload(amount="1e100"))
+    _assert_validation_error(response, field="amount")
+    assert response.get_json()["error"] == "validation_error"
+
+
 def test_create_expense_rejects_invalid_category(client):
     response = client.post("/expenses", json=_expense_payload(category="Paytm"))
     _assert_validation_error(response, field="category")

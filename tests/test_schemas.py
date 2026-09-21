@@ -80,6 +80,16 @@ def test_expense_create_rejects_amount_above_max_precision():
         )
 
 
+def test_expense_create_rejects_extreme_scientific_amount():
+    with pytest.raises(ValidationError):
+        ExpenseCreate(
+            amount=Decimal("1e100"),
+            category=Category.OTHER,
+            payment_method=PaymentMethod.CASH,
+            date=date.today(),
+        )
+
+
 def test_expense_create_rejects_future_date():
     with pytest.raises(ValidationError):
         ExpenseCreate(

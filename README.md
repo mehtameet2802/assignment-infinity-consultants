@@ -60,6 +60,7 @@ cd assignment-infinity-consultants
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+npm ci   # locked jsdom deps for frontend regression tests (requires Node.js)
 ```
 
 Optional: copy `.env.example` to `.env` to customize `DATABASE_URL` (defaults to `./spend_tracker.db`).
@@ -80,10 +81,11 @@ The SQLite database file is created automatically on first run.
 ## Tests
 
 ```bash
+npm ci    # once per clone, if not already run during setup
 pytest
 ```
 
-Run `pytest` from the project root (see test count in the pytest summary after any changes).
+Python tests cover the API, analytics, and dashboard. A small jsdom suite (`tests/js/frontend_regression.test.mjs`) runs via pytest when Node.js is installed. Use `npm ci` so installs match `package-lock.json`; if `node_modules/` is missing, pytest may attempt `npm install` instead (network required).
 
 ## API Overview
 
