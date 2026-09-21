@@ -34,3 +34,16 @@ def invalid_date_range_response():
         ],
         400,
     )
+
+
+def invalid_month_range_response():
+    return error_response(
+        "invalid_month_range",
+        [
+            {
+                "field": "start_month",
+                "message": "start_month must not be after end_month",
+            }
+        ],
+        400,
+    )
