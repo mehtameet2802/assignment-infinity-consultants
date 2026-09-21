@@ -64,7 +64,37 @@ pip install -r requirements.txt
 npm ci   # locked jsdom deps for frontend regression tests (requires Node.js)
 ```
 
-Optional: copy `.env.example` to `.env` to customize `DATABASE_URL` (defaults to `./spend_tracker.db`).
+Create the local environment file:
+
+```bash
+cp .env.example .env
+```
+
+On Windows Command Prompt, use `copy .env.example .env`. The `.env` file is ignored
+by Git and must not be committed because it contains authentication secrets. Complete
+the authentication setup below before starting the application with authentication
+enabled.
+
+### Quick evaluator setup (core assignment)
+
+API-key authentication is an optional bonus feature and is not required to review
+the core expense and summary functionality. For the shortest first-time setup, set
+the following value in `.env`:
+
+```dotenv
+AUTH_ENABLED=false
+```
+
+Then start the application without creating an administrator password or initial
+API key:
+
+```bash
+flask --app 'app:create_app()' run
+```
+
+The expense, dashboard, analytics, and UI features will be available immediately at
+[http://127.0.0.1:5000/](http://127.0.0.1:5000/). Enable authentication later by
+following the optional authentication setup below.
 
 ## Run
 
@@ -91,17 +121,79 @@ Single-user API-key protection for expense, dashboard, and analytics JSON endpoi
 | `API_KEY_PEPPER` | High-entropy secret for HMAC hashing before storage |
 | `ADMIN_PASSWORD_HASH` | Werkzeug hash used to authorize key rotation |
 
-See `.env.example` for placeholders.
+### Configure `.env` and create the first key
 
-### Bootstrap (production)
+Run these commands from the repository root with the virtual environment activated.
+
+1. Generate a high-entropy API-key pepper:
 
 ```bash
-# 1. Set AUTH_ENABLED=true, API_KEY_PEPPER, and generate ADMIN_PASSWORD_HASH in .env
-flask --app 'app:create_app()' auth hash-password
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
 
-# 2. Create the first key (printed once; cannot be recovered)
+Copy the entire output. Open `.env` in a text editor and replace the
+`API_KEY_PEPPER` placeholder. At this stage, `.env` should look like this:
+
+```dotenv
+DATABASE_URL=sqlite:///./spend_tracker.db
+AUTH_ENABLED=true
+API_KEY_PEPPER=PASTE_THE_GENERATED_PEPPER_HERE
+ADMIN_PASSWORD_HASH=replace-with-werkzeug-password-hash
+```
+
+`API_KEY_PEPPER` is a server secret, not the API key entered in the browser. Keep it
+stable and private. Changing it later makes every API key already stored in the
+database unusable.
+
+2. Generate the administrator password hash:
+
+```bash
+flask --app 'app:create_app()' auth hash-password
+```
+
+Enter the administrator password twice when prompted. Copy the complete generated
+hash and replace the `ADMIN_PASSWORD_HASH` placeholder in `.env`. Store only the
+generated hash in `.env`, never the plain-text administrator password.
+
+The completed file has this shape (the values below are examples, not usable
+credentials):
+
+```dotenv
+DATABASE_URL=sqlite:///./spend_tracker.db
+AUTH_ENABLED=true
+API_KEY_PEPPER=your-generated-random-pepper
+ADMIN_PASSWORD_HASH=scrypt:example-generated-hash
+```
+
+3. Create the initial API key:
+
+```bash
 flask --app 'app:create_app()' auth create-initial-key
 ```
+
+The command creates `spend_tracker.db` if necessary and prints a raw key beginning
+with `st_`. Copy and store that key immediately; it is displayed only once and
+cannot be recovered from the database. If the command reports that a usable key
+already exists, use that existing raw key or follow the recovery guidance below
+instead of resetting the database.
+
+4. Start the application:
+
+```bash
+flask --app 'app:create_app()' run
+```
+
+Open [http://127.0.0.1:5000/](http://127.0.0.1:5000/) and enter the generated
+`st_...` key on the unlock screen. To confirm the key from a terminal:
+
+```bash
+curl \
+  -H "X-API-Key: YOUR_ST_KEY" \
+  "http://127.0.0.1:5000/dashboard?month=2026-09"
+```
+
+For local development without authentication, set `AUTH_ENABLED=false`; the pepper,
+administrator password hash, and initial-key step are then unnecessary.
 
 ### Browser unlock
 
@@ -164,6 +256,11 @@ Single-month dashboard: totals, month-over-month change, breakdowns, top categor
 ### `GET /summary?start_month=YYYY-MM&end_month=YYYY-MM`
 
 Inclusive multi-month analytics: overall totals, category series, payment-method series, active category × payment-method combinations, and deterministic insights.
+
+The endpoint requires an explicit bounded month range even though the original task
+does not prescribe summary query parameters. This keeps aggregation work predictable,
+makes month-over-month comparisons unambiguous, includes zero-spend months correctly,
+and lets the same endpoint support both short comparisons and longer trend analysis.
 
 ### Authentication (when `AUTH_ENABLED=true`)
 
@@ -251,6 +348,7 @@ Other codes include `invalid_json`, `invalid_date_range`, and `invalid_month_ran
 8. **Central change engine** — One implementation of month-over-month rules.
 9. **Deterministic insights** — Testable, rule-based insight text (no LLM).
 10. **Active combinations only** — Keeps analytics payloads smaller than a full 40-combination matrix of mostly zeros.
+11. **Bounded summary ranges** — Required inclusive `start_month` and `end_month` values make query cost and comparison semantics explicit instead of relying on an arbitrary server default.
 
 ## Assumptions
 

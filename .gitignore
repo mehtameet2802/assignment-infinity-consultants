@@ -9,6 +9,7 @@ __pycache__/
 venv/
 env/
 *.db
+*.db.backup-*
 *.sqlite
 *.sqlite3
 .DS_Store
