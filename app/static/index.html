@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spend Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="/static/css/app.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: "#3525cd",
+            "primary-container": "#4f46e5",
+            "on-primary": "#ffffff",
+            secondary: "#565e74",
+            "on-surface": "#0b1c30",
+            "on-surface-variant": "#464555",
+            surface: "#f8f9ff",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#eff4ff",
+            "surface-container": "#e5eeff",
+            "outline-variant": "#c7c4d8",
+            "tertiary-container": "#006e4b",
+            error: "#ba1a1a",
+          },
+          fontFamily: { sans: ["Inter", "sans-serif"] },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="bg-surface text-on-surface font-sans">
+  <header class="sticky top-0 z-40 bg-surface-container-lowest border-b border-outline-variant/40">
+    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-6">
+        <span class="font-semibold text-lg">Spend Tracker</span>
+        <span class="hidden sm:inline text-xs px-2 py-1 rounded-full bg-surface-container-low text-on-surface-variant">INR (₹)</span>
+        <nav class="hidden md:flex items-center gap-6 h-16">
+          <a href="#dashboard" data-nav="dashboard" class="h-full flex items-center text-primary border-b-2 border-primary font-medium">Dashboard</a>
+          <a href="#expenses" data-nav="expenses" class="h-full flex items-center text-on-surface-variant hover:text-on-surface">Expenses</a>
+          <a href="#analytics" data-nav="analytics" class="h-full flex items-center text-on-surface-variant hover:text-on-surface">Analytics</a>
+        </nav>
+      </div>
+      <button type="button" data-open-expense-modal class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-container text-on-primary font-medium">
+        <span class="material-symbols-outlined text-base">add</span>
+        <span class="hidden sm:inline">Add Expense</span>
+      </button>
+    </div>
+  </header>
+
+  <div id="success-toast" class="hidden fixed top-20 right-4 z-50 bg-surface-container-lowest shadow-xl rounded-xl p-4 max-w-sm border border-outline-variant/30 opacity-0 translate-y-2 transition-all">
+    <div class="flex items-start gap-3">
+      <div>
+        <p class="font-semibold">Expense Logged</p>
+        <p class="text-sm text-on-surface-variant">Expense of <span id="toast-amount" class="font-semibold text-on-surface"></span> successfully added!</p>
+      </div>
+      <button id="toast-close" type="button" class="text-secondary">✕</button>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+    <section id="view-dashboard" class="space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-bold">Dashboard</h1>
+          <p class="text-on-surface-variant">What happened with your spending this month?</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="dashboard-prev-month" type="button" class="w-9 h-9 rounded-lg bg-surface-container-low">‹</button>
+          <span id="dashboard-month-label" class="px-3 font-semibold min-w-[10rem] text-center"></span>
+          <button id="dashboard-next-month" type="button" class="w-9 h-9 rounded-lg bg-surface-container-low">›</button>
+          <button type="button" data-open-expense-modal class="ml-2 px-4 py-2 rounded-lg bg-primary text-on-primary font-medium">Add Expense</button>
+        </div>
+      </div>
+      <div id="dashboard-loading" class="hidden text-secondary">Loading dashboard...</div>
+      <p id="dashboard-error" class="hidden text-error"></p>
+      <button id="dashboard-retry" type="button" class="hidden">Retry</button>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+          <p class="text-xs uppercase tracking-wide text-secondary">Total Spend</p>
+          <p id="dashboard-total-spend" class="text-3xl font-bold mt-1">—</p>
+          <p id="dashboard-txn-count" class="text-sm text-secondary mt-2">—</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+          <p class="text-xs uppercase tracking-wide text-secondary">vs Previous Month</p>
+          <p id="dashboard-change-amount" class="text-3xl font-bold mt-1">—</p>
+          <p id="dashboard-change-percent" class="text-sm font-medium mt-2">—</p>
+          <p id="dashboard-change-previous" class="text-sm text-secondary">—</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+          <p class="text-xs uppercase tracking-wide text-secondary">Top Category</p>
+          <div id="dashboard-top-category" class="mt-2">—</div>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+          <p class="text-xs uppercase tracking-wide text-secondary">Top Payment Method</p>
+          <div id="dashboard-top-payment" class="mt-2">—</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+          <h2 class="text-xl font-semibold mb-4">Spend by Category</h2>
+          <div id="dashboard-donut-wrap" class="chart-box"><canvas id="dashboard-category-chart"></canvas></div>
+          <p id="dashboard-donut-empty" class="hidden text-secondary text-sm">No spending data for chart.</p>
+          <div id="dashboard-category-list" class="mt-4 max-h-72 overflow-y-auto"></div>
+        </div>
+        <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+          <h2 class="text-xl font-semibold mb-4">Spend by Payment Method</h2>
+          <div id="dashboard-payment-list" class="space-y-1"></div>
+        </div>
+      </div>
+
+      <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-outline-variant/30">
+          <h2 class="text-xl font-semibold">Recent Expenses</h2>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-surface-container-low text-secondary uppercase text-xs">
+              <tr>
+                <th class="py-3 px-4 text-left">Date</th>
+                <th class="py-3 px-4 text-left">Category</th>
+                <th class="py-3 px-4 text-left">Payment Method</th>
+                <th class="py-3 px-4 text-left">Note</th>
+                <th class="py-3 px-4 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-recent-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-expenses" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-3xl font-bold">Expenses</h1>
+          <p class="text-on-surface-variant">Manage and filter your transactions.</p>
+        </div>
+        <button type="button" data-open-expense-modal class="px-4 py-2 rounded-lg bg-primary-container text-on-primary font-medium">Add Expense</button>
+      </div>
+      <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-3">
+        <label class="text-sm">Category<select id="filter-category" class="mt-1 w-full rounded-lg border border-outline-variant/50 p-2"></select></label>
+        <label class="text-sm">Payment Method<select id="filter-payment" class="mt-1 w-full rounded-lg border border-outline-variant/50 p-2"></select></label>
+        <label class="text-sm">From Date<input id="filter-start-date" type="date" class="mt-1 w-full rounded-lg border border-outline-variant/50 p-2"></label>
+        <label class="text-sm">To Date<input id="filter-end-date" type="date" class="mt-1 w-full rounded-lg border border-outline-variant/50 p-2"></label>
+        <div class="md:col-span-4 flex gap-2">
+          <button id="expenses-apply-filters" type="button" class="px-4 py-2 rounded-lg bg-primary text-on-primary">Apply Filters</button>
+          <button id="expenses-clear-filters" type="button" class="px-4 py-2 rounded-lg bg-surface-container">Clear Filters</button>
+        </div>
+      </div>
+      <div id="expenses-loading" class="hidden text-secondary">Loading expenses...</div>
+      <p id="expenses-error" class="hidden text-error"></p>
+      <button id="expenses-retry" type="button" class="text-primary">Retry</button>
+      <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-x-auto">
+        <table class="w-full text-sm min-w-[720px]">
+          <thead class="bg-surface-container-low text-secondary uppercase text-xs">
+            <tr>
+              <th class="py-3 px-4 text-left">Date</th>
+              <th class="py-3 px-4 text-left">Category</th>
+              <th class="py-3 px-4 text-left">Payment Method</th>
+              <th class="py-3 px-4 text-left">Note</th>
+              <th class="py-3 px-4 text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="expenses-table-body"></tbody>
+        </table>
+        <p id="expenses-empty" class="hidden p-6 text-center text-secondary"></p>
+      </div>
+      <div class="flex items-center justify-between">
+        <p id="expenses-page-label" class="text-sm text-secondary"></p>
+        <div class="flex gap-2">
+          <button id="expenses-prev" type="button" class="px-3 py-2 rounded-lg bg-surface-container">Previous</button>
+          <button id="expenses-next" type="button" class="px-3 py-2 rounded-lg bg-surface-container">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-analytics" class="hidden space-y-6">
+      <div>
+        <h1 class="text-3xl font-bold">Analytics</h1>
+        <p class="text-on-surface-variant">How has spending changed over time?</p>
+      </div>
+      <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm flex flex-wrap gap-4 items-end">
+        <label class="text-sm">Start Month<input id="analytics-start-month" type="month" class="mt-1 block rounded-lg border border-outline-variant/50 p-2"></label>
+        <label class="text-sm">End Month<input id="analytics-end-month" type="month" class="mt-1 block rounded-lg border border-outline-variant/50 p-2"></label>
+        <button id="analytics-apply" type="button" class="px-4 py-2 rounded-lg bg-primary text-on-primary">Apply</button>
+      </div>
+      <div id="analytics-loading" class="hidden text-secondary">Loading analytics...</div>
+      <p id="analytics-error" class="hidden text-error"></p>
+      <button id="analytics-retry" type="button" class="text-primary">Retry</button>
+
+      <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm space-y-4">
+        <h2 class="text-xl font-semibold">Overall Spending</h2>
+        <div class="chart-box"><canvas id="analytics-overall-chart"></canvas></div>
+        <table class="w-full text-sm"><thead><tr class="text-secondary text-xs uppercase"><th class="text-left py-2 px-3">Month</th><th class="text-left py-2 px-3">Total</th><th class="text-left py-2 px-3">Change</th><th class="text-left py-2 px-3">Change %</th></tr></thead><tbody id="analytics-overall-table"></tbody></table>
+      </div>
+
+      <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm space-y-4">
+        <div class="flex items-center justify-between gap-4">
+          <h2 class="text-xl font-semibold">Category Analysis</h2>
+          <select id="analytics-category-select" class="rounded-lg border border-outline-variant/50 p-2 text-sm"></select>
+        </div>
+        <div class="chart-box"><canvas id="analytics-category-chart"></canvas></div>
+        <table class="w-full text-sm"><thead><tr class="text-secondary text-xs uppercase"><th class="text-left py-2 px-3">Month</th><th class="text-left py-2 px-3">Amount</th><th class="text-left py-2 px-3">Change</th><th class="text-left py-2 px-3">Change %</th></tr></thead><tbody id="analytics-category-table"></tbody></table>
+      </div>
+
+      <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm space-y-4">
+        <h2 class="text-xl font-semibold">Payment Method Analysis</h2>
+        <div class="chart-box"><canvas id="analytics-payment-chart"></canvas></div>
+      </div>
+
+      <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm space-y-4">
+        <h2 class="text-xl font-semibold">Category × Payment Method</h2>
+        <div class="flex flex-wrap gap-3">
+          <select id="analytics-combo-category" class="rounded-lg border border-outline-variant/50 p-2 text-sm"></select>
+          <select id="analytics-combo-payment" class="rounded-lg border border-outline-variant/50 p-2 text-sm"></select>
+        </div>
+        <p id="analytics-combo-empty" class="hidden text-secondary"></p>
+        <div class="chart-box-sm"><canvas id="analytics-combo-chart"></canvas></div>
+        <table class="w-full text-sm"><thead><tr class="text-secondary text-xs uppercase"><th class="text-left py-2 px-3">Month</th><th class="text-left py-2 px-3">Amount</th><th class="text-left py-2 px-3">Change</th><th class="text-left py-2 px-3">Change %</th></tr></thead><tbody id="analytics-combo-table"></tbody></table>
+      </div>
+
+      <div class="space-y-3">
+        <h2 class="text-xl font-semibold">Insights</h2>
+        <div id="analytics-insights" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="expense-modal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+    <div class="bg-surface-container-lowest rounded-xl shadow-2xl w-full max-w-lg p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold">Add Expense</h2>
+        <button id="expense-modal-close" type="button" class="text-secondary">✕</button>
+      </div>
+      <form id="expense-form" class="space-y-4">
+        <label class="block text-sm">Amount *<input id="expense-amount" type="number" min="0.01" step="0.01" required class="mt-1 w-full rounded-lg border border-outline-variant/50 p-2"><span data-field-error="amount" class="text-error text-xs"></span></label>
+        <label class="block text-sm">Category *<select id="expense-category" required class="mt-1 w-full rounded-lg border border-outline-variant/50 p-2"></select><span data-field-error="category" class="text-error text-xs"></span></label>
+        <label class="block text-sm">Payment Method *<select id="expense-payment" required class="mt-1 w-full rounded-lg border border-outline-variant/50 p-2"></select><span data-field-error="payment_method" class="text-error text-xs"></span></label>
+        <label class="block text-sm">Date *<input id="expense-date" type="date" required class="mt-1 w-full rounded-lg border border-outline-variant/50 p-2"><span data-field-error="date" class="text-error text-xs"></span></label>
+        <label class="block text-sm">Note<input id="expense-note" type="text" maxlength="500" class="mt-1 w-full rounded-lg border border-outline-variant/50 p-2"><span data-field-error="note" class="text-error text-xs"></span></label>
+        <p id="expense-form-error" class="text-error text-sm"></p>
+        <button id="expense-submit" type="submit" class="w-full py-2 rounded-lg bg-primary-container text-on-primary font-medium">Save Expense</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
