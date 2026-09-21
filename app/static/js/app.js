@@ -1,5 +1,5 @@
 import { ApiError, apiPost } from "./api.js";
-import { initAnalytics, loadAnalytics } from "./analytics.js";
+import { getAnalyticsRange, initAnalytics, loadAnalytics } from "./analytics.js";
 import {
   getSelectedDashboardMonth,
   initDashboard,
@@ -41,6 +41,10 @@ function setActiveView(view) {
   });
   if (view === "dashboard") loadDashboard(getSelectedDashboardMonth() || currentMonth());
   if (view === "expenses") loadExpenses();
+  if (view === "analytics") {
+    const [startMonth, endMonth] = getAnalyticsRange();
+    loadAnalytics(startMonth, endMonth);
+  }
 }
 
 function initNavigation() {

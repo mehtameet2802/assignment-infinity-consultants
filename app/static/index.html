@@ -40,7 +40,7 @@
       <div class="flex items-center gap-6">
         <span class="font-semibold text-lg">Spend Tracker</span>
         <span class="hidden sm:inline text-xs px-2 py-1 rounded-full bg-surface-container-low text-on-surface-variant">INR (₹)</span>
-        <nav class="hidden md:flex items-center gap-6 h-16">
+        <nav class="flex items-center gap-4 md:gap-6 h-16 text-sm md:text-base">
           <a href="#dashboard" data-nav="dashboard" class="h-full flex items-center text-primary border-b-2 border-primary font-medium">Dashboard</a>
           <a href="#expenses" data-nav="expenses" class="h-full flex items-center text-on-surface-variant hover:text-on-surface">Expenses</a>
           <a href="#analytics" data-nav="analytics" class="h-full flex items-center text-on-surface-variant hover:text-on-surface">Analytics</a>
@@ -79,7 +79,7 @@
       </div>
       <div id="dashboard-loading" class="hidden text-secondary">Loading dashboard...</div>
       <p id="dashboard-error" class="hidden text-error"></p>
-      <button id="dashboard-retry" type="button" class="hidden">Retry</button>
+      <button id="dashboard-retry" type="button" class="hidden text-primary text-sm">Retry</button>
 
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
@@ -157,7 +157,7 @@
       </div>
       <div id="expenses-loading" class="hidden text-secondary">Loading expenses...</div>
       <p id="expenses-error" class="hidden text-error"></p>
-      <button id="expenses-retry" type="button" class="text-primary">Retry</button>
+      <button id="expenses-retry" type="button" class="hidden text-primary text-sm">Retry</button>
       <div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-x-auto">
         <table class="w-full text-sm min-w-[720px]">
           <thead class="bg-surface-container-low text-secondary uppercase text-xs">
@@ -194,7 +194,7 @@
       </div>
       <div id="analytics-loading" class="hidden text-secondary">Loading analytics...</div>
       <p id="analytics-error" class="hidden text-error"></p>
-      <button id="analytics-retry" type="button" class="text-primary">Retry</button>
+      <button id="analytics-retry" type="button" class="hidden text-primary text-sm">Retry</button>
 
       <div class="bg-surface-container-lowest rounded-xl p-5 shadow-sm space-y-4">
         <h2 class="text-xl font-semibold">Overall Spending</h2>

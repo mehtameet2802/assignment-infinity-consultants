@@ -18,6 +18,7 @@ function showError(message) {
   const el = document.getElementById("analytics-error");
   el.textContent = message;
   el.classList.remove("hidden");
+  document.getElementById("analytics-retry").classList.remove("hidden");
 }
 
 function hideError() {
@@ -261,6 +262,13 @@ export async function loadAnalytics(startMonth, endMonth) {
   } finally {
     setLoading(false);
   }
+}
+
+export function getAnalyticsRange() {
+  return [
+    document.getElementById("analytics-start-month").value,
+    document.getElementById("analytics-end-month").value,
+  ];
 }
 
 export function initAnalytics(defaultStart, defaultEnd) {

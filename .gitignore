@@ -1,4 +1,6 @@
 __pycache__/
+*.pyc
+*.pyo
 *.py[cod]
 *$py.class
 .Python
@@ -7,7 +9,9 @@ __pycache__/
 venv/
 env/
 *.db
+*.sqlite
 *.sqlite3
+.DS_Store
 .pytest_cache/
 .coverage
 htmlcov/

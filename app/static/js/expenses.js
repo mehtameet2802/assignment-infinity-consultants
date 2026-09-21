@@ -1,4 +1,4 @@
-import { apiGet } from "./api.js";
+import { ApiError, apiGet } from "./api.js";
 import { formatCurrency, formatDisplayDate } from "./formatters.js";
 
 const state = {
@@ -31,6 +31,7 @@ function showError(message) {
   const el = document.getElementById("expenses-error");
   el.textContent = message;
   el.classList.remove("hidden");
+  document.getElementById("expenses-retry").classList.remove("hidden");
 }
 
 function hideError() {
@@ -80,8 +81,13 @@ export async function loadExpenses() {
   try {
     const data = await apiGet(buildQuery());
     renderExpenses(data);
-  } catch {
-    showError("Couldn't load expenses.");
+  } catch (error) {
+    if (error instanceof ApiError && error.body?.error === "invalid_date_range") {
+      const detail = error.body.details?.[0]?.message || "Invalid date range.";
+      showError(detail);
+    } else {
+      showError("Couldn't load expenses.");
+    }
   } finally {
     setLoading(false);
   }
